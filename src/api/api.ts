@@ -114,6 +114,7 @@ export class ApiService {
         TOKEN_URL,
         `grant_type=authorization_code&code=${this.code}&client_id=${CLIENT_ID}`,
         httpTokenOptions).subscribe((a: AccessToken) => {
+      console.log('retrieved token');
       console.log(a);
       this.token = a.access_token;
     });
