@@ -77,6 +77,7 @@ const getVendorsPath =
 export class ApiService {
   private code = '';
   private token = '';
+  private membershipId = 0;
 
   constructor(private readonly httpClient: HttpClient, location: Location) {
     const path = location.path();
@@ -105,6 +106,15 @@ export class ApiService {
     };
 
     this.httpClient.get(DESTINY_API_URL + getVendorsPath, httpOptionsWithAuthz).subscribe((a) => {
+      console.log('with DIM member id')
+      console.log(a);
+    });
+
+    const vendorsPathWithTokenMemberId =
+    `/Destiny2/${MembershipType.STEAM}/Profile/${this.membershipId}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
+
+    this.httpClient.get(DESTINY_API_URL + vendorsPathWithTokenMemberId, httpOptionsWithAuthz).subscribe((a) => {
+      console.log('with token member id')
       console.log(a);
     });
   }
@@ -117,6 +127,7 @@ export class ApiService {
       console.log('retrieved token');
       console.log(a);
       this.token = a.access_token;
+      this.membershipId = a.membership_id;
     });
   }
 }
