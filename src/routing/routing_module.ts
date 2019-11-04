@@ -12,9 +12,7 @@ const routes: Routes = [
 
 @NgModule({
   declarations: [],
-  imports: [RouterModule.forRoot(routes, {enableTracing: false})],
+  imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],
 })
 export class RoutingModule {}
-
-// https://tolocalhost.com/?code=f259e87570b3a3f6de2b0751aba4f86d&state=someState

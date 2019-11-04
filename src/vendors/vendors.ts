@@ -9,9 +9,7 @@ import {ApiService} from '../api/api';
 export class Vendors {
   authz = this.apiService.getAuthzPath();
 
-  constructor(
-      private readonly apiService: ApiService,
-  ) {
+  constructor(private readonly apiService: ApiService) {
     console.log('vendors loaded');
   }
 
@@ -19,11 +17,11 @@ export class Vendors {
     this.apiService.getAccount();
   }
 
-  getData(): void {
-    this.apiService.getData();
-  }
-
   getToken(): void {
     this.apiService.getToken();
+  }
+
+  getVendors(): void {
+    this.apiService.getVendors();
   }
 }
