@@ -7,7 +7,7 @@ const CHARACTER_ID = '2305843009299377989';
 const CLIENT_ID = '30689';
 const DESTINY_API_URL = 'https://www.bungie.net/Platform';
 // REPLACE WITH MEMBERSHIP ID FROM TOKEN
-const MEMBERSHIP_ID = '12356004';
+const MEMBERSHIP_ID = '4611686018467185892';
 const TOKEN_URL = 'https://www.bungie.net/platform/app/oauth/token/';
 
 const httpTokenOptions = {
