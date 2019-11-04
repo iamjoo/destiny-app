@@ -15,6 +15,10 @@ export class Vendors {
     console.log('vendors loaded');
   }
 
+  getAccount(): void {
+    this.apiService.getAccount();
+  }
+
   getData(): void {
     this.apiService.getData();
   }
