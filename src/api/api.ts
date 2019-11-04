@@ -78,6 +78,10 @@ interface UserMembershipData {
   bungieNetUser: any;
 }
 
+interface AccountResponse {
+  Response: UserMembershipData;
+}
+
 function buildQueryString(components: ComponentType[]): string {
   return `?components=${components.join(',')}`;
 }
@@ -129,8 +133,8 @@ export class ApiService {
               console.log('retrieved memberships')
               console.log(a);
             }),
-            map((membershipData: UserMembershipData) => {
-              return from(membershipData.destinyMemberships);
+            map((response: AccountResponse) => {
+              return from(response.Response.destinyMemberships);
             }),
             switchMap((info) => {
               return info;
