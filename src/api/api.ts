@@ -1,8 +1,11 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Location, LocationStrategy, PathLocationStrategy} from '@angular/common';
+import {filter, map, switchMap, tap} from 'rxjs/operators';
+import {from} from 'rxjs';
 
 const API_KEY = 'af40b0c22c6545d59895a4afc986eafd';
+// REPLACE WITH CHARACTER ID FROM TOKEN
 const CHARACTER_ID = '2305843009299377989';
 const CLIENT_ID = '30689';
 const DESTINY_API_URL = 'https://www.bungie.net/Platform';
@@ -62,6 +65,19 @@ interface AccessToken {
   token_type: string;
 }
 
+// https://bungie-net.github.io/multi/schema_GroupsV2-GroupUserInfoCard.html#schema_GroupsV2-GroupUserInfoCard
+interface GroupUserInfoCard {
+  membershipType: MembershipType;
+  membershipId: number;
+  displayName: string;
+}
+
+// https://bungie-net.github.io/multi/schema_User-UserMembershipData.html#schema_User-UserMembershipData
+interface UserMembershipData {
+  destinyMemberships: GroupUserInfoCard[];
+  bungieNetUser: any;
+}
+
 function buildQueryString(components: ComponentType[]): string {
   return `?components=${components.join(',')}`;
 }
@@ -70,14 +86,15 @@ const authzPath = `https://www.bungie.net/en/oauth/authorize?client_id=${CLIENT_
 
 // https://bungie-net.github.io/multi/operation_get_Destiny2-GetVendors.html#operation_get_Destiny2-GetVendors
 // /Destiny2/{membershipType}/Profile/{destinyMembershipId}/Character/{characterId}/Vendors/
-const getVendorsPath =
-    `/Destiny2/${MembershipType.STEAM}/Profile/${MEMBERSHIP_ID}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
+// const getVendorsPath =
+//     `/Destiny2/${MembershipType.STEAM}/Profile/${MEMBERSHIP_ID}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
 
 @Injectable({providedIn: 'root'})
 export class ApiService {
   private code = '';
   private token = '';
   private bungieMembershipId = 0;
+  private destinyMembershipId = 0;
 
   constructor(private readonly httpClient: HttpClient, location: Location) {
     const path = location.path();
@@ -106,10 +123,26 @@ export class ApiService {
       }),
     };
 
-    this.httpClient.get(DESTINY_API_URL + getAccountPath, httpOptionsWithAuthz).subscribe((a) => {
-      console.log('retrieved memberships')
-      console.log(a);
-    });
+    this.httpClient.get(DESTINY_API_URL + getAccountPath, httpOptionsWithAuthz)
+        .pipe(
+            tap(a => {
+              console.log('retrieved memberships')
+              console.log(a);
+            }),
+            map((membershipData: UserMembershipData) => {
+              return from(membershipData.destinyMemberships);
+            }),
+            switchMap((info) => {
+              return info;
+            }),
+            filter((membership) => {
+              return membership.membershipType === MembershipType.STEAM;
+            }),
+            map((a) => {
+              this.destinyMembershipId = a.membershipId;
+            }),
+            )
+        .subscribe();
   }
 
   getData() {
@@ -119,6 +152,9 @@ export class ApiService {
         'X-API-Key': API_KEY,
       }),
     };
+
+    const getVendorsPath =
+    `/Destiny2/${MembershipType.STEAM}/Profile/${this.destinyMembershipId}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
 
     this.httpClient.get(DESTINY_API_URL + getVendorsPath, httpOptionsWithAuthz).subscribe((a) => {
       console.log('with DIM member id')
