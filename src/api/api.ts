@@ -161,7 +161,8 @@ export class ApiService {
         console.log('using stored token');
       }
 
-      this.token = accessToken;
+      const parsedToken: StoredAccessToken = JSON.parse(accessToken);
+      this.token = parsedToken.access_token;
     });
   }
 
