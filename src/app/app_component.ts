@@ -17,19 +17,6 @@ const navExtras: NavigationExtras = {
 })
 export class AppComponent {
   constructor(location: Location, router: Router) {
-    // const path = location.path();
-    // console.log(path);
-
-    // if (path) {
-    //   const searchParams = new URLSearchParams(path);
-    //   const code = searchParams.get('code');
-    //   console.log(code);
-
-    //   if (code) {
-    //     // do something with it
-    //   }
-    // }
-
     console.log('app component loaded');
     // router.navigate(['vendors'], navExtras);
     // router.navigateByUrl('/vendors', navExtras);
