@@ -101,7 +101,7 @@ export class ApiService {
     const getAccountPath = `/User/GetMembershipsForCurrentUser/`;
     const httpOptionsWithAuthz = {
       headers: new HttpHeaders({
-        'Authorization': this.token,
+        'Authorization':`Bearer ${this.token}`,
         'X-API-Key': API_KEY,
       }),
     };
@@ -115,7 +115,7 @@ export class ApiService {
   getData() {
     const httpOptionsWithAuthz = {
       headers: new HttpHeaders({
-        'Authorization': this.token,
+        'Authorization': `Bearer ${this.token}`,
         'X-API-Key': API_KEY,
       }),
     };
