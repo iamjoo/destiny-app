@@ -10,9 +10,6 @@ const DESTINY_API_URL = 'https://www.bungie.net/Platform';
 const MEMBERSHIP_ID = '12356004';
 const TOKEN_URL = 'https://www.bungie.net/platform/app/oauth/token/';
 
-// REPLACE WITH RESPONSE
-// const CODE = '2dbf738d5210c0b50bacf732d9189009';
-
 const httpTokenOptions = {
   headers: new HttpHeaders({
     'Content-Type': 'application/x-www-form-urlencoded',
@@ -58,6 +55,13 @@ enum MembershipType {
   ALL = -1,
 }
 
+interface AccessToken {
+  access_token: string;
+  expires_in: number;
+  membership_id: number;
+  token_type: string;
+}
+
 function buildQueryString(components: ComponentType[]): string {
   return `?components=${components.join(',')}`;
 }
@@ -72,6 +76,7 @@ const getVendorsPath =
 @Injectable({providedIn: 'root'})
 export class ApiService {
   private code = '';
+  private token = '';
 
   constructor(private readonly httpClient: HttpClient, location: Location) {
     const path = location.path();
@@ -92,14 +97,25 @@ export class ApiService {
   }
 
   getData() {
+    const httpOptionsWithAuthz = {
+      headers: new HttpHeaders({
+        'Authorization': this.token,
+        'X-API-Key': API_KEY,
+      }),
+    };
+
     this.httpClient.get(DESTINY_API_URL + getVendorsPath, httpOptionsWithAuthz).subscribe((a) => {
       console.log(a);
     });
   }
 
   getToken() {
-    this.httpClient.post(TOKEN_URL, `grant_type=authorization_code&code=${this.code}&client_id=${CLIENT_ID}`, httpTokenOptions).subscribe((a) => {
+    this.httpClient.post(
+        TOKEN_URL,
+        `grant_type=authorization_code&code=${this.code}&client_id=${CLIENT_ID}`,
+        httpTokenOptions).subscribe((a: AccessToken) => {
       console.log(a);
+      this.token = a.access_token;
     });
   }
 }
