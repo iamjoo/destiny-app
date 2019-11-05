@@ -13,10 +13,6 @@ export class Vendors {
     console.log('vendors loaded');
   }
 
-  getAccount(): void {
-    this.apiService.getAccount();
-  }
-
   getManifest(): void {
     this.apiService.getManifest();
   }
@@ -27,5 +23,9 @@ export class Vendors {
 
   getVendors(): void {
     this.apiService.getVendors();
+  }
+
+  testAuthz(): void {
+    this.apiService.testAuthz();
   }
 }

@@ -2,15 +2,18 @@ import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Location, LocationStrategy, PathLocationStrategy} from '@angular/common';
 import {filter, map, switchMap, tap} from 'rxjs/operators';
-import {from, Observable} from 'rxjs';
+import {from, Observable, of as observableOf} from 'rxjs';
+
+import {uuid} from '../util/util';
 
 const API_KEY = 'af40b0c22c6545d59895a4afc986eafd';
 // REPLACE WITH CHARACTER ID FROM TOKEN
 const CHARACTER_ID = '2305843009299377989';
 const CLIENT_ID = '30689';
 const DESTINY_API_URL = 'https://www.bungie.net/Platform';
+const STATE = uuid();
 const TOKEN_URL = 'https://www.bungie.net/platform/app/oauth/token/';
-const AUTHZ_URL = `https://www.bungie.net/en/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&state=someState`;
+const AUTHZ_URL = `https://www.bungie.net/en/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&state=${STATE}`;
 
 // https://bungie-net.github.io/multi/schema_Destiny-DestinyComponentType.html#schema_Destiny-DestinyComponentType
 enum ComponentType {
@@ -195,16 +198,20 @@ export class ApiService {
     return AUTHZ_URL;
   }
 
-  getAccount() {
+  testAuthz() {
+    return this.httpClient.get(AUTHZ_URL).subscribe((a) => console.log(a));
+  }
+
+  private getDestinyId(): Observable<void> {
     const storedDestinyId = localStorage.getItem(StorageKey.DESTINY_ID);
     if (storedDestinyId) {
       this.destinyId = storedDestinyId;
-      return;
+      return observableOf();
     }
 
     const getMembershipsPath = `/User/GetMembershipsForCurrentUser/`;
 
-    this.httpClient.get(
+    return this.httpClient.get(
         DESTINY_API_URL + getMembershipsPath, this.createAuthzHeaders())
         .pipe(
             map((response: ApiResponse<UserMembershipData>) => {
@@ -221,8 +228,7 @@ export class ApiService {
               localStorage.setItem(StorageKey.DESTINY_ID, destinyId);
               this.destinyId = destinyId;
             }),
-            )
-        .subscribe();
+            );
   }
 
   private getEntity<T>(entityType: EntityType, hash: number): Observable<ApiResponse<T>> {
@@ -298,8 +304,9 @@ export class ApiService {
             }),
             )
     .subscribe((a) => {
-      console.log('retrieved vendors');
+      console.log('retrieved single vendor');
       console.log(a);
+      a.Response.displayCategories[0].displayCategoryHash
     });
   }
 
