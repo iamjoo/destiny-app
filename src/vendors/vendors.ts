@@ -7,8 +7,6 @@ import {ApiService} from '../api/api';
   styleUrls: ['./vendors.scss']
 })
 export class Vendors {
-  authz = this.apiService.getAuthzPath();
-
   constructor(private readonly apiService: ApiService) {
     console.log('vendors loaded');
   }
