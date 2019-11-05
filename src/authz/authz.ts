@@ -14,7 +14,7 @@ export class Authz implements OnInit {
 
   private sendCode(event: MessageEvent): void {
     console.log(event.origin);
-    if (!event.origin.startsWith('https://iamjoo.github.io/destiny-app/')) {
+    if (!event.origin.startsWith('https://iamjoo.github.io')) {
       return;
     }
 
