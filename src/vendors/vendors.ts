@@ -17,6 +17,10 @@ export class Vendors {
     this.apiService.getAccount();
   }
 
+  getManifest(): void {
+    this.apiService.getManifest();
+  }
+
   getToken(): void {
     this.apiService.getToken();
   }

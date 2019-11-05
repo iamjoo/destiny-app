@@ -2,7 +2,7 @@ import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
 import {Location, LocationStrategy, PathLocationStrategy} from '@angular/common';
 import {filter, map, switchMap, tap} from 'rxjs/operators';
-import {from} from 'rxjs';
+import {from, Observable} from 'rxjs';
 
 const API_KEY = 'af40b0c22c6545d59895a4afc986eafd';
 // REPLACE WITH CHARACTER ID FROM TOKEN
@@ -11,19 +11,6 @@ const CLIENT_ID = '30689';
 const DESTINY_API_URL = 'https://www.bungie.net/Platform';
 const TOKEN_URL = 'https://www.bungie.net/platform/app/oauth/token/';
 const AUTHZ_URL = `https://www.bungie.net/en/oauth/authorize?client_id=${CLIENT_ID}&response_type=code&state=someState`;
-const ACCESS_TOKEN_STORAGE_KEY = 'access_token';
-
-interface AccessToken {
-  access_token: string;
-  expires_in: number;
-  membership_id: number;
-  token_type: string;
-}
-
-interface StoredAccessToken {
-  access_token: string;
-  expiration_ms: number;
-}
 
 // https://bungie-net.github.io/multi/schema_Destiny-DestinyComponentType.html#schema_Destiny-DestinyComponentType
 enum ComponentType {
@@ -34,6 +21,11 @@ enum ComponentType {
   VENDORS = 400,
   VENDOR_CATEGORIES = 401,
   VENDOR_SALES = 402,
+}
+
+enum EntityType {
+  ITEM = 'DestinyInventoryItemDefinition',
+  VENDOR = 'DestinyVendorDefinition',
 }
 
 // https://bungie-net.github.io/multi/schema_BungieMembershipType.html#schema_BungieMembershipType
@@ -49,6 +41,23 @@ enum MembershipType {
   ALL = -1,
 }
 
+enum StorageKey {
+  ACCESS_TOKEN = 'access_token',
+  DESTINY_ID = 'destiny_id',
+}
+
+interface AccessTokenResponse {
+  access_token: string;
+  expires_in: number;
+  membership_id: number;
+  token_type: string;
+}
+
+interface StoredAccessToken {
+  access_token: string;
+  expiration_ms: number;
+}
+
 // https://bungie-net.github.io/multi/schema_GroupsV2-GroupUserInfoCard.html#schema_GroupsV2-GroupUserInfoCard
 interface GroupUserInfoCard {
   membershipType: MembershipType;
@@ -62,24 +71,111 @@ interface UserMembershipData {
   bungieNetUser: any;
 }
 
-interface AccountResponse {
-  Response: UserMembershipData;
+// https://bungie-net.github.io/multi/schema_Destiny-Responses-DestinyVendorsResponse.html#schema_Destiny-Responses-DestinyVendorsResponse
+interface VendorsResponse {
+  vendorGroups: NestedApiResponse<VendorGroupComponent>;
+  vendors: NestedApiResponse<MappedVendorComponent>;
+  categories: string;
+  // more
+}
+
+interface MappedVendorComponent {
+  [vendorHash: number]: VendorComponent;
+}
+
+interface VendorComponent {
+  vendorHash: number;
+  enabled: boolean;
+}
+
+interface VendorGroupComponent {
+  groups: Array<VendorGroup>;
+}
+
+interface VendorGroup {
+  vendorGroupHash: number; // see https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyVendorGroupDefinition.html#schema_Destiny-Definitions-DestinyVendorGroupDefinition
+  vendorHashes: number[]; // see https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyVendorDefinition.html#schema_Destiny-Definitions-DestinyVendorDefinition
+}
+
+// https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyVendorDefinition.html#schema_Destiny-Definitions-DestinyVendorDefinition
+interface Vendor {
+  displayProperties: VendorDisplayProperties;
+  vendorPortrait: string;
+  enabled: boolean;
+  visible: boolean;
+  displayCategories: DisplayCategory[];
+  itemList: VendorItem[];
+  hash: number;
+}
+
+// https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyVendorItemDefinition.html#schema_Destiny-Definitions-DestinyVendorItemDefinition
+interface VendorItem {
+  itemHash: number; // https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyInventoryItemDefinition.html#schema_Destiny-Definitions-DestinyInventoryItemDefinition
+}
+
+// https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyInventoryItemDefinition.html#schema_Destiny-Definitions-DestinyInventoryItemDefinition
+interface Item {
+  hash: number;
+  itemTypeDisplayName: string;
+}
+
+// https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyDisplayCategoryDefinition.html#schema_Destiny-Definitions-DestinyDisplayCategoryDefinition
+interface DisplayCategory {
+  index: number;
+  identifier: string;
+  displayCategoryHash: number;
+}
+
+// https://bungie-net.github.io/multi/schema_Destiny-Definitions-DestinyVendorDisplayPropertiesDefinition.html#schema_Destiny-Definitions-DestinyVendorDisplayPropertiesDefinition
+interface VendorDisplayProperties {
+  largeIcon: string;
+  subtitle: string;
+  description: string;
+  name: string;
+}
+
+interface Manifest {
+  version: string;
+  mobileGearAssetDataBases: string;
+  mobileWorldContentPaths: {};
+}
+
+interface ApiResponse<T> {
+  Response: T;
+  ErrorCode: number;
+  ErrorStatus: string;
+  Message: string;
+  MessageData: {};
+  ThrottleSeconds: number;
+}
+
+interface NestedApiResponse<T> {
+  data: T;
 }
 
 function buildQueryString(components: ComponentType[]): string {
   return `?components=${components.join(',')}`;
 }
 
-function isExpired(storedToken: string) {
+function isStillValid(storedToken: string) {
   const token: StoredAccessToken = JSON.parse(storedToken);
-  return Date.now() >= token.expiration_ms;
+  return Date.now() < token.expiration_ms;
+}
+
+function storeToken(tokenReponse: AccessTokenResponse) {
+  const newToken: StoredAccessToken = {
+    access_token: tokenReponse.access_token,
+    expiration_ms: Date.now() + tokenReponse.expires_in * 1000,
+  }
+
+  localStorage.setItem(StorageKey.ACCESS_TOKEN, JSON.stringify(newToken));
 }
 
 @Injectable({providedIn: 'root'})
 export class ApiService {
   private authzCode = '';
   private token = '';
-  private destinyMembershipId = 0;
+  private destinyId = '';
 
   constructor(private readonly httpClient: HttpClient, location: Location) {
     const path = location.path();
@@ -100,12 +196,18 @@ export class ApiService {
   }
 
   getAccount() {
-    const getAccountPath = `/User/GetMembershipsForCurrentUser/`;
+    const storedDestinyId = localStorage.getItem(StorageKey.DESTINY_ID);
+    if (storedDestinyId) {
+      this.destinyId = storedDestinyId;
+      return;
+    }
+
+    const getMembershipsPath = `/User/GetMembershipsForCurrentUser/`;
 
     this.httpClient.get(
-        DESTINY_API_URL + getAccountPath, this.createAuthzHeaders())
+        DESTINY_API_URL + getMembershipsPath, this.createAuthzHeaders())
         .pipe(
-            map((response: AccountResponse) => {
+            map((response: ApiResponse<UserMembershipData>) => {
               console.log('retrieved memberships')
               console.log(response);
               return from(response.Response.destinyMemberships);
@@ -115,24 +217,44 @@ export class ApiService {
               return membership.membershipType === MembershipType.STEAM;
             }),
             map((userInfo) => {
-              this.destinyMembershipId = userInfo.membershipId;
+              const destinyId = `${userInfo.membershipId}`;
+              localStorage.setItem(StorageKey.DESTINY_ID, destinyId);
+              this.destinyId = destinyId;
             }),
             )
         .subscribe();
   }
 
-  getVendors() {
-    // https://bungie-net.github.io/multi/operation_get_Destiny2-GetVendors.html#operation_get_Destiny2-GetVendors
-    const getVendorsPath =
-    `/Destiny2/${MembershipType.STEAM}/Profile/${this.destinyMembershipId}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
+  private getEntity<T>(entityType: EntityType, hash: number): Observable<ApiResponse<T>> {
+    const getEntityPath = `/Destiny2/Manifest/${entityType}/${hash}/`;
 
-    this.httpClient.get(DESTINY_API_URL + getVendorsPath, this.createAuthzHeaders()).subscribe((a) => {
-      console.log('retrieved vendors');
-      console.log(a);
-    });
+    return this.httpClient.get<ApiResponse<T>>(
+        DESTINY_API_URL + getEntityPath, this.createAuthzHeaders());
+  }
+
+  getManifest() {
+    const getManifestPath = `/Destiny2/Manifest/`;
+
+    this.httpClient.get(
+        DESTINY_API_URL + getManifestPath, this.createAuthzHeaders())
+        .pipe(
+            map((response: ApiResponse<Manifest>) => {
+              console.log('retrieved manifest')
+              console.log(response);
+            }),
+            )
+        .subscribe();
   }
 
   getToken() {
+    const storedToken = localStorage.getItem(StorageKey.ACCESS_TOKEN);
+    if (storedToken && isStillValid(storedToken)) {
+      console.log('using stored token');
+      const accessToken: StoredAccessToken = JSON.parse(storedToken);
+      this.token = accessToken.access_token;
+      return;
+    }
+
     const httpTokenOptions = {
       headers: new HttpHeaders({
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -143,26 +265,41 @@ export class ApiService {
     this.httpClient.post(
         TOKEN_URL,
         `grant_type=authorization_code&code=${this.authzCode}&client_id=${CLIENT_ID}`,
-        httpTokenOptions).subscribe((a: AccessToken) => {
-      console.log('retrieved token');
+        httpTokenOptions).subscribe((response: AccessTokenResponse) => {
+      console.log('retrieved new token');
+      console.log(response);
+      storeToken(response);
+
+      this.token = response.access_token;
+    });
+  }
+
+  getVendors() {
+    // https://bungie-net.github.io/multi/operation_get_Destiny2-GetVendors.html#operation_get_Destiny2-GetVendors
+    const getVendorsPath =
+    `/Destiny2/${MembershipType.STEAM}/Profile/${this.destinyId}/Character/${CHARACTER_ID}/Vendors/${buildQueryString([ComponentType.VENDORS])}`;
+
+    this.httpClient.get(
+        DESTINY_API_URL + getVendorsPath, this.createAuthzHeaders())
+        .pipe(
+            map((response: ApiResponse<VendorsResponse>) => {
+              console.log('retrieved vendors');
+              console.log(response);
+
+              const vendorsMap = response.Response.vendors.data;
+              const firstVendorHash = Object.keys(vendorsMap)[0];
+              console.log(`firstVendorHash: ${firstVendorHash}`);
+
+              return this.getEntity<Vendor>(EntityType.VENDOR, Number(firstVendorHash));
+            }),
+            switchMap((response) => {
+              console.log(response);
+              return response;
+            }),
+            )
+    .subscribe((a) => {
+      console.log('retrieved vendors');
       console.log(a);
-
-      let accessToken = localStorage.getItem(ACCESS_TOKEN_STORAGE_KEY);
-      if (!accessToken || isExpired(accessToken)) {
-        // store it
-        console.log('storing new token');
-        const newToken = {
-          expiration_ms: Date.now() + a.expires_in * 1000,
-          access_token: a.access_token,
-        }
-        accessToken = JSON.stringify(newToken);
-        localStorage.setItem(ACCESS_TOKEN_STORAGE_KEY, accessToken);
-      } else {
-        console.log('using stored token');
-      }
-
-      const parsedToken: StoredAccessToken = JSON.parse(accessToken);
-      this.token = parsedToken.access_token;
     });
   }
 

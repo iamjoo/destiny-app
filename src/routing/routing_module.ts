@@ -8,10 +8,11 @@ const routes: Routes = [
   {path: 'vendors', component: Vendors},
   {path: 'routing', component: Routing},
   {path: '', redirectTo: 'vendors', pathMatch: 'full'},
+  {path: '**', redirectTo: 'vendors', pathMatch: 'full'},
 ];
 
 @NgModule({
-  declarations: [],
+  declarations: [Routing],
   imports: [RouterModule.forRoot(routes)],
   exports: [RouterModule],
 })

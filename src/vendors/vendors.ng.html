@@ -1,6 +1,9 @@
-Hi!
+<div>Hi!</div>
 
-<div><a [href]="authz">Authz</a></div>
-<div><button (click)="getToken()">Get token</button></div>
-<div><button (click)="getAccount()">Get account</button></div>
-<div><button (click)="getVendors()">Get vendors</button></div>
+<div class="buttons">
+  <a mat-button [href]="authz">Authz</a>
+  <button mat-button color="primary" (click)="getToken()">Get token</button>
+  <button mat-button color="primary" (click)="getAccount()">Get account</button>
+  <button mat-button color="primary" (click)="getManifest()">Get manifest</button>
+  <button mat-button color="primary" (click)="getVendors()">Get vendors</button>
+</div>
