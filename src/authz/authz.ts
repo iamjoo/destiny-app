@@ -13,19 +13,18 @@ export class Authz implements OnInit {
   }
 
   private sendCode(event: MessageEvent): void {
-    const path = this.location.path();
-    const startIndex = path.indexOf('?');
-
-    let code = '';
-    let state = '';
-    if (path && startIndex) {
-      code = new URLSearchParams(path.substring(startIndex)).get('code');
-      state = new URLSearchParams(path.substring(startIndex)).get('state');
+    if (!event.origin.startsWith('https://iamjoo.github.io/destiny-app/')) {
+      return;
     }
 
-    console.log(`code: ${code}`);
-    console.log(`state: ${state}`);
-    console.log(event.origin);
+    const path = this.location.path();
+    const startIndex = path.indexOf('?');
+    if (!path || !startIndex) {
+      return;
+    }
+
+    const code = new URLSearchParams(path.substring(startIndex)).get('code');
+    const state = new URLSearchParams(path.substring(startIndex)).get('state');
     (event.source as WindowProxy).postMessage({state, code}, event.origin);
   }
 }

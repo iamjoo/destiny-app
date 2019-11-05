@@ -181,17 +181,17 @@ export class ApiService {
   private destinyId = '';
 
   constructor(private readonly httpClient: HttpClient, location: Location) {
-    const path = location.path();
-    const startIndex = path.indexOf('?');
+    // const path = location.path();
+    // const startIndex = path.indexOf('?');
 
-    if (path && startIndex) {
-      const code = new URLSearchParams(path.substring(startIndex)).get('code');
-      console.log(`code: ${code}`);
+    // if (path && startIndex) {
+    //   const code = new URLSearchParams(path.substring(startIndex)).get('code');
+    //   console.log(`code: ${code}`);
 
-      if (code) {
-        this.authzCode = code;
-      }
-    }
+    //   if (code) {
+    //     this.authzCode = code;
+    //   }
+    // }
   }
 
   getAuthzPath() {
@@ -199,23 +199,32 @@ export class ApiService {
   }
 
   testAuthz() {
-    const newWindow = window.open(AUTHZ_URL, 'authz', 'resizable=yes, width=600, height=600');
+    const newWindow =
+        window.open(AUTHZ_URL, 'authz', 'resizable=yes, width=600, height=600');
 
     const intervalId = window.setInterval(() => {
       console.log('pinging popup');
-      newWindow.postMessage('check', 'https://iamjoo.github.io/destiny-app/authz');
+      newWindow.postMessage(
+          'check', 'https://iamjoo.github.io/destiny-app/authz');
     }, 1000);
-    window.addEventListener('message', (e) => this.handleCode(e, intervalId, newWindow));
-    // newWindow.document.body.appendChild(iframe);
-    // document.body.appendChild(iframe);
-    // return this.httpClient.get(AUTHZ_URL).subscribe((a) => console.log(a));
+    window.addEventListener(
+        'message', (e) => this.handleCode(e, intervalId, newWindow));
   }
 
-  private handleCode(event: MessageEvent, intervalId: number, newWindow: Window): void {
+  private handleCode(
+      event: MessageEvent, intervalId: number, newWindow: Window): void {
     clearInterval(intervalId);
     newWindow.close();
+    window.removeEventListener(
+        'message', (e) => this.handleCode(e, intervalId, newWindow));
 
-    console.log(event.data);
+    const {code, state} = event.data;
+    if (state !== STATE) {
+      console.warn('state mismatch');
+      return;
+    }
+
+    this.authzCode = code;
   }
 
   private getDestinyId(): Observable<void> {
