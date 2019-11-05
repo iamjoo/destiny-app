@@ -14,18 +14,22 @@ export class Authz implements OnInit {
 
   private sendCode(event: MessageEvent): void {
     console.log(event.origin);
-    if (!event.origin.startsWith('https://iamjoo.github.io')) {
+    if (!event.origin.startsWith('https://iamjoo.github.io') ||
+        !event.origin.startsWith('http://localhost:4200')) {
+      console.warn('origin is different');
       return;
     }
 
+    const sourceWindow = event.source as WindowProxy;
     const path = this.location.path();
     const startIndex = path.indexOf('?');
     if (!path || !startIndex) {
+      sourceWindow.postMessage({state: ''}, event.origin);
       return;
     }
 
     const code = new URLSearchParams(path.substring(startIndex)).get('code');
     const state = new URLSearchParams(path.substring(startIndex)).get('state');
-    (event.source as WindowProxy).postMessage({state, code}, event.origin);
+    sourceWindow.postMessage({state, code}, event.origin);
   }
 }

@@ -24,6 +24,6 @@ export class Vendors {
   }
 
   testAuthz(): void {
-    this.apiService.testAuthz();
+    this.apiService.getAuthzCode();
   }
 }

@@ -1,8 +1,7 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
-import {Location} from '@angular/common';
-import {filter, map, switchMap, tap} from 'rxjs/operators';
-import {from, Observable, of as observableOf} from 'rxjs';
+import {filter, map, switchMap, takeUntil, tap} from 'rxjs/operators';
+import {from, fromEvent, interval as intervalOf, Observable, of as observableOf, race, Subject, timer as timerOf} from 'rxjs';
 
 import {uuid} from '../util/util';
 
@@ -179,52 +178,52 @@ export class ApiService {
   private authzCode = '';
   private token = '';
   private destinyId = '';
+  private readonly authzReady$ = new Subject<{}>();
 
-  constructor(private readonly httpClient: HttpClient, location: Location) {
-    // const path = location.path();
-    // const startIndex = path.indexOf('?');
-
-    // if (path && startIndex) {
-    //   const code = new URLSearchParams(path.substring(startIndex)).get('code');
-    //   console.log(`code: ${code}`);
-
-    //   if (code) {
-    //     this.authzCode = code;
-    //   }
-    // }
+  constructor(private readonly httpClient: HttpClient) {
+    // check token
+    const storedToken = localStorage.getItem(StorageKey.ACCESS_TOKEN);
+    if (storedToken && isStillValid(storedToken)) {
+      console.log('using stored token');
+      const accessToken: StoredAccessToken = JSON.parse(storedToken);
+      this.token = accessToken.access_token;
+    } else {
+      // get authzcode
+      this.authzReady$.subscribe(() => this.getToken());
+      this.getAuthzCode();
+    }
   }
 
-  getAuthzPath() {
-    return AUTHZ_URL;
-  }
-
-  testAuthz() {
+  getAuthzCode(): void {
     const newWindow =
         window.open(AUTHZ_URL, 'authz', 'resizable=yes, width=600, height=600');
 
-    const intervalId = window.setInterval(() => {
-      console.log('pinging popup');
-      newWindow.postMessage(
-          'check', 'https://iamjoo.github.io/destiny-app/authz');
-    }, 1000);
-    window.addEventListener(
-        'message', (e) => this.handleCode(e, intervalId, newWindow));
+    const eventListener$ = fromEvent(window, 'message').pipe(
+        map((e: MessageEvent) => this.handleCode(e, newWindow)));
+    const timer$ = timerOf(5 * 60 * 1000 /* 5 min */);
+
+    // Ping the popup until it responds back or after 5 min
+    intervalOf(1000).pipe(
+        map(() => {
+          console.log('pinging popup');
+          newWindow.postMessage(
+              'check', 'https://iamjoo.github.io/destiny-app/authz');
+        }),
+        takeUntil(race(eventListener$, timer$)),
+        ).subscribe();
   }
 
-  private handleCode(
-      event: MessageEvent, intervalId: number, newWindow: Window): void {
-    clearInterval(intervalId);
+  private handleCode(event: MessageEvent, newWindow: Window): void {
     newWindow.close();
-    window.removeEventListener(
-        'message', (e) => this.handleCode(e, intervalId, newWindow));
 
     const {code, state} = event.data;
     if (state !== STATE) {
-      console.warn('state mismatch');
+      console.warn(`state mismatch: [${state}]`);
       return;
     }
 
     this.authzCode = code;
+    this.authzReady$.next();
   }
 
   private getDestinyId(): Observable<void> {
@@ -278,13 +277,6 @@ export class ApiService {
   }
 
   getToken() {
-    const storedToken = localStorage.getItem(StorageKey.ACCESS_TOKEN);
-    if (storedToken && isStillValid(storedToken)) {
-      console.log('using stored token');
-      const accessToken: StoredAccessToken = JSON.parse(storedToken);
-      this.token = accessToken.access_token;
-      return;
-    }
 
     const httpTokenOptions = {
       headers: new HttpHeaders({
