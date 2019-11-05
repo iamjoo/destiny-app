@@ -14,7 +14,7 @@ export class Authz implements OnInit {
 
   private sendCode(event: MessageEvent): void {
     console.log(event.origin);
-    if (!event.origin.startsWith('https://iamjoo.github.io') ||
+    if (!event.origin.startsWith('https://iamjoo.github.io') &&
         !event.origin.startsWith('http://localhost:4200')) {
       console.warn('origin is different');
       return;
