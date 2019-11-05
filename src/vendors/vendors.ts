@@ -15,15 +15,7 @@ export class Vendors {
     this.apiService.getManifest();
   }
 
-  getToken(): void {
-    this.apiService.getToken();
-  }
-
   getVendors(): void {
     this.apiService.getVendors();
-  }
-
-  testAuthz(): void {
-    this.apiService.getAuthzCode();
   }
 }

@@ -179,6 +179,7 @@ export class ApiService {
   private token = '';
   private destinyId = '';
   private readonly authzReady$ = new Subject<{}>();
+  private readonly tokenReady$ = new Subject<{}>();
 
   constructor(private readonly httpClient: HttpClient) {
     // check token
@@ -192,9 +193,18 @@ export class ApiService {
       this.authzReady$.subscribe(() => this.getToken());
       this.getAuthzCode();
     }
+
+    // check destiny id
+    const storedDestinyId = localStorage.getItem(StorageKey.DESTINY_ID);
+    if (storedDestinyId) {
+      console.log('using stored destiny id');
+      this.destinyId = storedDestinyId;
+    } else {
+      this.getDestinyId().subscribe();
+    }
   }
 
-  getAuthzCode(): void {
+  private getAuthzCode(): void {
     const newWindow =
         window.open(AUTHZ_URL, 'authz', 'resizable=yes, width=600, height=600');
 
@@ -227,11 +237,11 @@ export class ApiService {
   }
 
   private getDestinyId(): Observable<void> {
-    const storedDestinyId = localStorage.getItem(StorageKey.DESTINY_ID);
-    if (storedDestinyId) {
-      this.destinyId = storedDestinyId;
-      return observableOf();
-    }
+    // const storedDestinyId = localStorage.getItem(StorageKey.DESTINY_ID);
+    // if (storedDestinyId) {
+    //   this.destinyId = storedDestinyId;
+    //   return observableOf();
+    // }
 
     const getMembershipsPath = `/User/GetMembershipsForCurrentUser/`;
 
@@ -276,8 +286,7 @@ export class ApiService {
         .subscribe();
   }
 
-  getToken() {
-
+  private getToken(): void {
     const httpTokenOptions = {
       headers: new HttpHeaders({
         'Content-Type': 'application/x-www-form-urlencoded',
@@ -294,6 +303,7 @@ export class ApiService {
       storeToken(response);
 
       this.token = response.access_token;
+      this.tokenReady$.next();
     });
   }
 
