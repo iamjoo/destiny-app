@@ -7,6 +7,7 @@ import {NgModule} from '@angular/core';
 import {AppComponent} from './app_component';
 
 import {ApiService} from '../api/api';
+import {AuthzModule} from '../authz/authz_module';
 import {Routing} from '../routing/routing';
 import {RoutingModule} from '../routing/routing_module';
 import {Vendors} from '../vendors/vendors';
@@ -15,6 +16,7 @@ import {VendorsModule} from '../vendors/vendors_module';
 @NgModule({
   declarations: [AppComponent],
   imports: [
+    AuthzModule,
     BrowserAnimationsModule,
     BrowserModule,
     HttpClientModule,

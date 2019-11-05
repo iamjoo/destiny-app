@@ -1,6 +1,6 @@
 import {Injectable} from '@angular/core';
 import {HttpClient, HttpHeaders} from '@angular/common/http';
-import {Location, LocationStrategy, PathLocationStrategy} from '@angular/common';
+import {Location} from '@angular/common';
 import {filter, map, switchMap, tap} from 'rxjs/operators';
 import {from, Observable, of as observableOf} from 'rxjs';
 
@@ -199,7 +199,23 @@ export class ApiService {
   }
 
   testAuthz() {
-    return this.httpClient.get(AUTHZ_URL).subscribe((a) => console.log(a));
+    const newWindow = window.open(AUTHZ_URL, 'authz', 'resizable=yes, width=600, height=600');
+
+    const intervalId = window.setInterval(() => {
+      console.log('pinging popup');
+      newWindow.postMessage('check', 'https://iamjoo.github.io/destiny-app/authz');
+    }, 1000);
+    window.addEventListener('message', (e) => this.handleCode(e, intervalId, newWindow));
+    // newWindow.document.body.appendChild(iframe);
+    // document.body.appendChild(iframe);
+    // return this.httpClient.get(AUTHZ_URL).subscribe((a) => console.log(a));
+  }
+
+  private handleCode(event: MessageEvent, intervalId: number, newWindow: Window): void {
+    clearInterval(intervalId);
+    newWindow.close();
+
+    console.log(event.data);
   }
 
   private getDestinyId(): Observable<void> {
